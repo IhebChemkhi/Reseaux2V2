@@ -1,11 +1,14 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <QUrl>
+#include <qqmlapplicationengine.h>
+#include <qquickwidget.h>
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
-    return a.exec();
+    QQmlApplicationEngine engine;
+    engine.load(QUrl(QStringLiteral("qrc:/mapsLock.qml"))); // Replace with your main QML file path
+     return a.exec();
 }
