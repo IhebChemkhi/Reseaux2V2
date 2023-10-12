@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>mapsLock.qml</file>
+    </qresource>
+</RCC>
