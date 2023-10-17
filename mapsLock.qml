@@ -1,24 +1,52 @@
-import QtQuick 2.15
-import QtLocation 5.15
-import QtPositioning 5.15
-import QtQuick.Controls 2.15
-ApplicationWindow {
-    visible: true
-    width: 800
-    height: 600
+import QtQuick 2.0
+import QtLocation 5.6
+import QtPositioning 5.6
+
+Rectangle {
+    id: window
+
+    property double oldLat: 47.750839
+    property double oldLng: 7.335888
+    property Component comMarker: mapMarker
+
+    Plugin {
+        id: mapPlugin
+        name: "osm"
+    }
 
     Map {
+        id: mapView
         anchors.fill: parent
+        plugin: mapPlugin
+        center: QtPositioning.coordinate(oldLat, oldLng);
+        zoomLevel: 12
+    }
 
-        plugin: Plugin {
-            name: "osm"  // You can use other map plugins, e.g., "esri"
-            PluginParameter {
-                    name: "osm.mapping.custom.host"
-                    value: "https://tile.thunderforest.com/spinal-map/{1}/{1}/{1}.png?apikey=a34e26382bec4f6c89b34976553c33d0" // Use a different OSM tile server URL
-                }
+    function setCenter(lat, lng) {
+        mapView.pan(oldLat - lat, oldLng - lng)
+        oldLat = lat
+        oldLng = lng
+    }
+
+    function addMarker(lat, lng) {
+        var item = comMarker.createObject(window, {
+                                           coordinate: QtPositioning.coordinate(lat, lng)
+                                          })
+        mapView.addMapItem(item)
+    }
+
+    Component {
+        id: mapMarker
+        MapQuickItem {
+            id: markerImg
+            anchorPoint.x: image.width/4
+            anchorPoint.y: image.height
+            coordinate: position
+
+            sourceItem: Image {
+                id: image
+                source: "http://maps.gstatic.com/mapfiles/ridefinder-images/mm_20_red.png"
+            }
         }
-
-        center: QtPositioning.coordinate(51.5072, -0.1276)  // Initial map center
-        zoomLevel: 10  // Initial zoom level
     }
 }

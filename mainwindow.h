@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QVariant>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -17,5 +18,9 @@ public:
 
 private:
     Ui::MainWindow *ui;
+
+signals:
+    void setCenter(QVariant, QVariant);
+    void addMarker(QVariant, QVariant);
 };
 #endif // MAINWINDOW_H
