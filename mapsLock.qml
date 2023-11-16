@@ -1,7 +1,7 @@
-import QtQuick 2.15
-import QtLocation 5.15
-import QtPositioning 5.15
-import QtQuick.Controls 2.15
+import QtQuick 2.12
+import QtLocation 5.9
+import QtPositioning 5.12
+import QtQuick.Controls 2.12
 ApplicationWindow {
     visible: true
     width: 800
@@ -14,8 +14,8 @@ ApplicationWindow {
             name: "osm"  // You can use other map plugins, e.g., "esri"
             PluginParameter {
                     name: "osm.mapping.custom.host"
-                    value: "https://tile.thunderforest.com/spinal-map/{1}/{1}/{1}.png?apikey=a34e26382bec4f6c89b34976553c33d0" // Use a different OSM tile server URL
-                }
+                    value: "https://tile.openstreetmap.org/{x}/{y}/{z}.png" // Use a different OSM tile server URL
+            }
         }
 
         center: QtPositioning.coordinate(51.5072, -0.1276)  // Initial map center
