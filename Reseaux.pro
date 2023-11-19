@@ -1,5 +1,6 @@
-QT       += core gui location widgets quick quickwidgets
+QT       += core gui widgets
 
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets quickwidgets
 
 CONFIG += c++17
 
@@ -24,3 +25,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 RESOURCES += \
     Maps.qrc
+
+DISTFILES += \
+    MapMarker.qml
