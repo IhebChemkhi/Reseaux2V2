@@ -1,6 +1,6 @@
 // Include necessary headers
 #include <QMainWindow>
-
+#include "Node.h"
 namespace Ui {
 class MainWindow;
 }
@@ -14,4 +14,5 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    QMap<quint64, Node*> nodes;
 };

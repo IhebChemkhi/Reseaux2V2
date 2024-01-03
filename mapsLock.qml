@@ -10,17 +10,11 @@ Rectangle {
     property double minY: 9.0
     property double maxX: 70.0
     property double maxY: .0
+    property var node: nodeData
 
+    property var ways: waysData
     property int sideLength: 40
     property color hexagonColor: "green"
-    function findNodeById(nodeId) {
-        for (var i = 0; i < nodeData.length; i++) {
-            if (nodeData[i].id === nodeId) {
-                return nodeData[i];
-            }
-        }
-        return null; // Retourner null si le nœud n'est pas trouvé
-    }
     Plugin {
         id: mapPlugin
         name: "osm"
@@ -35,7 +29,7 @@ Rectangle {
         anchors.fill: parent
         plugin: mapPlugin
         center: QtPositioning.coordinate(oldLat, oldLng);
-        zoomLevel: 13
+        zoomLevel: 15
     }
     Plugin {
         id: itemsOverlayPlugin
@@ -98,14 +92,26 @@ Rectangle {
             }
         }
 
-        Component{
-            id:carComponent
+        Component {
+            id: carComponent
 
             MapQuickItem {
                 id: carItem
                 property int currentNodeIndex: 0
-                property var currentWay: waysData && waysData.length > 0 ? waysData[0] : null
+                property var currentWay: ways[94]
+                property int currentWayIndex: 0
+                Component.onCompleted: {
 
+                    if (ways.length > 0 && ways[0].nodeIds.length > 0) {
+                        var firstNodeId = ways[0].nodeIds[0];
+                        for (var i = 0; i < node.length; i++) {
+                            if (node[i].id === firstNodeId) {
+                                carItem.coordinate = QtPositioning.coordinate(node[i].lat, node[i].lon);
+                                break;
+                            }
+                        }
+                    }
+                }
                 sourceItem: Rectangle {
                     id: carCircle
                     width: 10
@@ -114,54 +120,42 @@ Rectangle {
                     radius: width / 2
                 }
 
-                Component.onCompleted: {
-                    //console.log("waysData:", JSON.stringify(waysData));
-                    //console.log("nodeData:", JSON.stringify(nodeData));
-
-                    if (currentWay && currentWay.nodeIds && currentWay.nodeIds.length > 0) {
-                        var firstNodeId = currentWay.nodeIds[2];
-                        var firstNode = findNodeById(firstNodeId);
-                        if (firstNode) {
-                            carItem.coordinate = QtPositioning.coordinate(firstNode.lat, firstNode.lon);
-                        } else {
-                            console.log("First node is undefined for nodeId:", firstNodeId);
-                        }
-                    } else {
-                        console.log("Current way is undefined or empty");
-                    }
-                }
-
                 Timer {
-                    interval: 1000
-                    running: currentWay && currentWay.nodeIds && currentWay.nodeIds.length > 0
+
+                    interval: 2000
+                    running: ways.length > 0
                     repeat: true
 
                     onTriggered: {
+                        var currentWay = ways[currentWayIndex];
+                        console.log("Current way", currentWay.id);
                         if (currentNodeIndex < currentWay.nodeIds.length) {
-                            var nextNodeId = currentWay.nodeIds[currentNodeIndex];
-                            var nextNode = findNodeById(nextNodeId);
-                            if (nextNode) {
-                                carItem.coordinate = QtPositioning.coordinate(nextNode.lat, nextNode.lon);
-                                currentNodeIndex = (currentNodeIndex + 1) % currentWay.nodeIds.length;
-                            } else {
-                                console.log("Next node is undefined for nodeId:", nextNodeId);
+                            var nodeId = currentWay.nodeIds[currentNodeIndex];
+                            for (var i = 0; i < node.length; i++) {
+                                if (node[i].id === nodeId) {
+                                    carItem.coordinate = QtPositioning.coordinate(node[i].lat, node[i].lon);
+                                    currentNodeIndex++;
+                                    break;
+                                }
                             }
+                        } else {
+                            // Move to the next way
+                            currentNodeIndex = 0;
+                            currentWayIndex = (currentWayIndex + 1) % ways.length;
                         }
                     }
                 }
             }
-
-
-
         }
+
 
         // Créer la voiture
         Repeater {
             model: 1 // Nombre de voitures
             delegate: carComponent
-
         }
     }
 }
+
 
 

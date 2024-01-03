@@ -22,11 +22,14 @@ bool isNodeIdPresent(const QMap<quint64, Node*>& nodes, quint64 nodeId) {
 }
 
 
-bool isNodeIdPresent(QVariantList node,  quint64 nodeId){
-    if (node.contains(nodeId)){
-        return true;
+bool isNodeIdPresent(const QVariantList &nodeList, quint64 nodeId) {
+    for (const QVariant &nodeVariant : nodeList) {
+        QVariantMap nodeMap = nodeVariant.toMap();
+        if (nodeMap.value("id").toULongLong() == nodeId) {
+            return true;
+        }
     }
-     return false;
+    return false;
 }
 QMap<quint64, Node*> readAllOsmNodes(const QString &fileName) {
     QMap<quint64, Node*> nodes;
@@ -149,11 +152,14 @@ MainWindow::MainWindow(QWidget *parent) :
     // Passer les données à QML
     ui->quickWidget->engine()->rootContext()->setContextProperty("nodeData", nodeListForQml);
     ui->quickWidget->engine()->rootContext()->setContextProperty("waysData", wayListForQml);
-    qDebug()<<isNodeIdPresent(nodeListForQml,5887238122);
+
     ui->quickWidget->setSource(QUrl(QStringLiteral("qrc:/mapsLock.qml")));
     ui->quickWidget->show();
 }
 
 MainWindow::~MainWindow() {
+    for (auto &node : nodes) {
+        delete node;
+    }
     delete ui;
 }
