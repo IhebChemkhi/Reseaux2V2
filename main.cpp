@@ -1,11 +1,16 @@
 #include "mainwindow.h"
+#include "node.h"
 #include <QApplication>
 #include <math.h>
 #include <iostream>
+#include <QFile>
+#include <QQmlContext>
+#include <QXmlStreamReader>
+#include <QQmlApplicationEngine>
 #define DEG_TO_RAD (M_PI / 180.0)
 #define RAD_TO_DEG (180.0 / M_PI)
-using namespace std;
-struct Lambert93 {
+//using namespace libsumo;
+/*struct Lambert93 {
     double x;
     double y;
 };
@@ -32,21 +37,70 @@ Lambert93 convertToLambert93(double latitude, double longitude) {
     result.y = ys - R * cos(lon_radians);
 
     return result;
-}
+}*/
 
+
+
+#include <QFile>
+#include <QXmlStreamReader>
+
+QList<Node> readOsmFile(const QString &fileName) {
+    QFile file(fileName);
+    if (!file.open(QFile::ReadOnly | QFile::Text)) {
+        qDebug() << "Error: Cannot read file" << qPrintable(fileName)
+                 << ": " << qPrintable(file.errorString());
+        exit(0);
+    }
+
+    QXmlStreamReader xmlReader(&file);
+    QList<Node> nodes;
+    while (!xmlReader.atEnd() && !xmlReader.hasError()) {
+        // Lire le fichier XML
+        QXmlStreamReader::TokenType token = xmlReader.readNext();
+
+        // Vérifiez si c'est un élément de démarrage
+        if (token == QXmlStreamReader::StartElement) {
+            if (xmlReader.name().toString() == "node") {
+                Node node;
+                node.id = xmlReader.attributes().value("uid").toLong();
+                node.lat = xmlReader.attributes().value("lat").toDouble();
+                node.lon = xmlReader.attributes().value("lon").toDouble();
+
+                nodes.append(node);
+                qDebug() << "Nombre de nœuds chargés :" << nodes.count();
+
+            }
+        }
+    }
+
+
+    if (xmlReader.hasError()) {
+        qDebug() << "XML error: " << xmlReader.errorString();
+    }
+
+    file.close();
+    return nodes;
+}
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    qRegisterMetaType<Node>("Node");
+    qRegisterMetaType<QList<Node>>("QList<Node>");
     MainWindow w;
-    w.show();
-
-    double latitude = 48.858331; // Paris latitude
+    QQmlApplicationEngine engine;
+    QList<Node> n;
+    n= readOsmFile("C:/Users/ihebc/OneDrive/Bureau/Reseaux2V2/DonneMap.osm");
+    engine.rootContext()->setContextProperty("nodeData", QVariant::fromValue(n));
+    engine.load(QUrl(QStringLiteral("qrc:/mapsLock.qml"))); // Chargez votre fichier QML
+    /*double latitude = 48.858331; // Paris latitude
         double longitude = 2.321669; // Paris longitude
 
         Lambert93 lambert93Coord = convertToLambert93(latitude, longitude);
 
         // Output Lambert 93 coordinates
-        std::cout << "Lambert 93 coordinates: (" << lambert93Coord.x << ", " << lambert93Coord.y << ")" << std::endl;
+        std::cout << "Lambert 93 coordinates: (" << lambert93Coord.x << ", " << lambert93Coord.y << ")" << std::endl;*/
+    w.show();
+
     return a.exec();
 }

@@ -6,14 +6,13 @@ Rectangle {
     id: window
     property double oldLat: 47.750839
     property double oldLng: 7.335888
-    property Component comMarker: mapMarker
+
 
     property double minX: 47.0
     property double minY: 9.0
     property double maxX: 70.0
     property double maxY: .0
     property int sideLength: 40
-
     property color hexagonColor: "green"
 
     Plugin {
@@ -25,141 +24,101 @@ Rectangle {
     // Create a button to generate the hexagonal grid
 
     Map {
-        id: mapView
+        id: map
         anchors.fill: parent
         plugin: mapPlugin
         center: QtPositioning.coordinate(oldLat, oldLng);
-        zoomLevel: 12
-        property var dynamicPolyline: null
+        zoomLevel: 13
+        Plugin {
+            id: itemsOverlayPlugin
+            name: "itemsoverlay"
+        }
+        Map {
+            id: overlayMap
+            anchors.fill: parent
+            plugin: itemsOverlayPlugin
+            center: map.center
+            zoomLevel: map.zoomLevel
+            color: "transparent"
 
-        property var poly : []
-
-
-        Component.onCompleted: {
-            var coordinates = [
-                // Set starting coordinates of the line
-                 QtPositioning.coordinate(47.761542, 7.335888), // Set ending coordinates of the line
-                 QtPositioning.coordinate(47.756691, 7.348272),
-                 QtPositioning.coordinate(47.745987, 7.348272),
-                 QtPositioning.coordinate(47.740135, 7.335888),
-                 QtPositioning.coordinate(47.745987, 7.323505),
-                 QtPositioning.coordinate(47.756691, 7.323505),
-                 QtPositioning.coordinate(47.761542, 7.335888)
-             ];
-
-            //  recuperer dynamiquement les points et tracer par une boucle les polygones
-
-            var dynamicPolylineComponent = Qt.createQmlObject(
-                'import QtLocation 5.6; MapPolyline { line.color: "red"; line.width: 3; path: ' + JSON.stringify(coordinates) + '; }',
-                mapView,
-                'dynamicPolyline'
-            );
-            var polygonn = generatePolygons();
-
-
-            console.log(polygonn.length)
-            for(var i = 0;i<polygonn.length;i++){
-                mapView.addMapItem(polygonn[i])
-                console.log(i)
+            Component.onCompleted: {
+                console.log("overlayMap is loaded");
             }
 
-            mapView.addMapItem(dynamicPolylineComponent);
+            Component {
+                id: hexagonComponent
+                MapPolygon {
+                    border.color: 'red'
+                    border.width: 1
+                    opacity: 0.7
+
+                    property color originalColor: "transparent"
 
 
+                    property int hexagonId: modelData
+                    property real r: 0.001155 * 2 // The radius of the hexagon, adjust this to change the size
+                    property real w: Math.sqrt(3) * r // Width of the hexagon
+                    property real d: 1.5 * r // Adjusted vertical separation between hexagons
+                    property real row: Math.floor(hexagonId / 13)
+                    property real col: hexagonId % 13
+                    property real xOffset: (row % 2) * (w / 2)
+                    property real centerX: 47.7445 - 0.019 + col * w + xOffset
+                    property real centerY: 7.3400 - 0.043 + row * d
 
-        }
-
-
-        function generatePolygonsCoordinates(){
-
-        }
-
-        function generatePolygons() {
-                // Create a list to store the polygons
-                var polygons = []
-
-                // Calculate the starting coordinates for the polygons
-                var startX = oldLat + sideLength / 2
-                var startY = oldLng + sideLength * 0.75 / 2
-
-                // Iterate over the area boundaries, generating polygons within the range
-                for (var y = startY; y < 90; y += sideLength * 0.75) {
-                    for (var x = startX; x < 90; x += sideLength) {
-                        // Create a polygon with hexagonal vertices
-                        var polygonPoints = [
-                            QtPositioning.coordinate(x, y),
-                            QtPositioning.coordinate(x + sideLength * 0.75, y - sideLength * 0.25),
-                            QtPositioning.coordinate(x + sideLength, y - sideLength * 0.5),
-                            QtPositioning.coordinate(x + sideLength * 0.75, y - sideLength * 0.75),
-                            QtPositioning.coordinate(x + sideLength / 2, y - sideLength),
-                            QtPositioning.coordinate(x - sideLength * 0.25, y - sideLength * 0.75),
-                            QtPositioning.coordinate(x, y)
-                        ]
-
-                        var polygon = Qt.createQmlObject(
-                                    'import QtLocation 5.6; MapPolyline { line.color: "black"; line.width: 3; path: ' + JSON.stringify(polygonPoints) + '; }',
-                                    mapView,
-                                    'dynamicPolyline'+x+y
-                                );
-                        polygons.push(polygon)
-
-
+                    function hexVertex(angle) {
+                        return QtPositioning.coordinate(centerX + r * Math.sin(angle), centerY + r * Math.cos(angle));
                     }
 
-                    // Adjust the starting x-coordinate for the next row of polygons
-                    startX -= sideLength / 2
+                    path: [
+                        hexVertex(Math.PI / 3 * 0),
+                        hexVertex(Math.PI / 3 * 1),
+                        hexVertex(Math.PI / 3 * 2),
+                        hexVertex(Math.PI / 3 * 3),
+                        hexVertex(Math.PI / 3 * 4),
+                        hexVertex(Math.PI / 3 * 5)
+                    ]
                 }
-
-                console.log(polygons)
-
-                // Return the list of polygons
-                return polygons
             }
 
+            Repeater {
+                id: hexagonRepeater
+                model: 312 // Number of hexagons to create
+                delegate: hexagonComponent
+                Component.onCompleted: {
+                    console.log("hexagonRepeater is loaded, count:", count);
+                }
+            }
+            Component {
+                id: carComponent
+                MapQuickItem {
+                    id: carItem
+                    property int currentNodeIndex: 0
+                    property var nodes : nodeData
 
-//        MapPolyline {
-//                    line.color: "blue" // Set the line color
-//                    line.width: 3 // Set the line width
+                    coordinate: QtPositioning.coordinate(47.750839, 7.335888)
 
-//                    path: [
-//                       // Set starting coordinates of the line
-//                        QtPositioning.coordinate(47.761542, 7.335888), // Set ending coordinates of the line
-//                        QtPositioning.coordinate(47.756691, 7.348272),
-//                        QtPositioning.coordinate(47.745987, 7.348272),
-//                        QtPositioning.coordinate(47.740135, 7.335888),
-//                        QtPositioning.coordinate(47.745987, 7.323505),
-//                        QtPositioning.coordinate(47.756691, 7.323505),
-//                        QtPositioning.coordinate(47.761542, 7.335888)
-//                    ]
-//                }
+                    sourceItem: Rectangle {
+                        id: carCircle
+                        width: 10
+                        height: 10
+                        color: "blue"
+                        radius: width / 2
+                    }
 
-    }
+                    // Fonction pour passer au nœud suivant
 
-    function setCenter(lat, lng) {
-        mapView.pan(oldLat - lat, oldLng - lng)
-        oldLat = lat
-        oldLng = lng
-    }
+                }
+            }
 
-    function addMarker(lat, lng) {
-        var item = comMarker.createObject(window, {
-                                           coordinate: QtPositioning.coordinate(lat, lng)
-                                          })
-        mapView.addMapItem(item)
-    }
-
-    Component {
-        id: mapMarker
-        MapQuickItem {
-            id: markerImg
-            anchorPoint.x: image.width/4
-            anchorPoint.y: image.height
-            coordinate: position
-
-            sourceItem: Image {
-                id: image
-                source: "http://maps.gstatic.com/mapfiles/ridefinder-images/mm_20_red.png"
+            // Créer la voiture
+            Repeater {
+                model: 1 // Nombre de voitures
+                delegate: carComponent
+                Component.onCompleted: {
+                    console.log("exemple node"+nodeData[0].id);
+                }
             }
         }
     }
 }
+

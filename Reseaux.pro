@@ -12,8 +12,10 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp
 
+
 HEADERS += \
-    mainwindow.h
+    mainwindow.h \
+    node.h
 
 FORMS += \
     mainwindow.ui
@@ -27,4 +29,8 @@ RESOURCES += \
     Maps.qrc
 
 DISTFILES += \
+    DonneMap.osm \
     MapMarker.qml
+
+
+

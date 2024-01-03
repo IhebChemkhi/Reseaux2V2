@@ -11,12 +11,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->quickWidget->setSource(QUrl(QStringLiteral("qrc:/mapsLock.qml")));
     ui->quickWidget->show();
-
-    auto obj = ui->quickWidget->rootObject();
-    connect(this, SIGNAL(setCenter(QVariant, QVariant)), obj, SLOT(setCenter(QVariant, QVariant)));
-    connect(this, SIGNAL(addMarker(QVariant, QVariant)), obj, SLOT(addMarker(QVariant, QVariant)));
-
-    emit setCenter(47.750839, 7.335888);
     // emit addMarker(25.000, 50.000);
 }
 
