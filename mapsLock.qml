@@ -119,7 +119,7 @@ Rectangle {
                     //console.log("nodeData:", JSON.stringify(nodeData));
 
                     if (currentWay && currentWay.nodeIds && currentWay.nodeIds.length > 0) {
-                        var firstNodeId = currentWay.nodeIds[0];
+                        var firstNodeId = currentWay.nodeIds[2];
                         var firstNode = findNodeById(firstNodeId);
                         if (firstNode) {
                             carItem.coordinate = QtPositioning.coordinate(firstNode.lat, firstNode.lon);

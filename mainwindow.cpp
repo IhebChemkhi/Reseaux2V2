@@ -149,7 +149,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Passer les données à QML
     ui->quickWidget->engine()->rootContext()->setContextProperty("nodeData", nodeListForQml);
     ui->quickWidget->engine()->rootContext()->setContextProperty("waysData", wayListForQml);
-    qDebug()<<isNodeIdPresent(nodes,5887238122);
+    qDebug()<<isNodeIdPresent(nodeListForQml,5887238122);
     ui->quickWidget->setSource(QUrl(QStringLiteral("qrc:/mapsLock.qml")));
     ui->quickWidget->show();
 }
