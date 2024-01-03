@@ -13,7 +13,14 @@ Rectangle {
 
     property int sideLength: 40
     property color hexagonColor: "green"
-
+    function findNodeById(nodeId) {
+        for (var i = 0; i < nodeData.length; i++) {
+            if (nodeData[i].id === nodeId) {
+                return nodeData[i];
+            }
+        }
+        return null; // Retourner null si le nœud n'est pas trouvé
+    }
     Plugin {
         id: mapPlugin
         name: "osm"
@@ -44,6 +51,7 @@ Rectangle {
 
         Component.onCompleted: {
             console.log("overlayMap is loaded");
+
         }
 
         Component {
@@ -89,14 +97,14 @@ Rectangle {
                 console.log("hexagonRepeater is loaded, count:", count);
             }
         }
-        Component {
-            id: carComponent
+
+        Component{
+            id:carComponent
+
             MapQuickItem {
                 id: carItem
                 property int currentNodeIndex: 0
-                property var nodes: nodeData // Assurez-vous que nodeData est la liste des nœuds
-
-                coordinate: QtPositioning.coordinate(nodes[0].lat, nodes[0].lon) // Position initiale
+                property var currentWay: waysData && waysData.length > 0 ? waysData[0] : null
 
                 sourceItem: Rectangle {
                     id: carCircle
@@ -106,20 +114,45 @@ Rectangle {
                     radius: width / 2
                 }
 
+                Component.onCompleted: {
+                    //console.log("waysData:", JSON.stringify(waysData));
+                    //console.log("nodeData:", JSON.stringify(nodeData));
+
+                    if (currentWay && currentWay.nodeIds && currentWay.nodeIds.length > 0) {
+                        var firstNodeId = currentWay.nodeIds[0];
+                        var firstNode = findNodeById(firstNodeId);
+                        if (firstNode) {
+                            carItem.coordinate = QtPositioning.coordinate(firstNode.lat, firstNode.lon);
+                        } else {
+                            console.log("First node is undefined for nodeId:", firstNodeId);
+                        }
+                    } else {
+                        console.log("Current way is undefined or empty");
+                    }
+                }
+
                 Timer {
-                    interval: 1000 // Mettre à jour la position toutes les secondes
-                    running: true
+                    interval: 1000
+                    running: currentWay && currentWay.nodeIds && currentWay.nodeIds.length > 0
                     repeat: true
 
                     onTriggered: {
-                        if (nodes.length > 0 && currentNodeIndex < nodes.length) {
-                            var nextNode = nodes[currentNodeIndex];
-                            carItem.coordinate = QtPositioning.coordinate(nextNode.lat, nextNode.lon);
-                            currentNodeIndex = (currentNodeIndex + 1) % nodes.length; // Boucle à travers les nœuds
+                        if (currentNodeIndex < currentWay.nodeIds.length) {
+                            var nextNodeId = currentWay.nodeIds[currentNodeIndex];
+                            var nextNode = findNodeById(nextNodeId);
+                            if (nextNode) {
+                                carItem.coordinate = QtPositioning.coordinate(nextNode.lat, nextNode.lon);
+                                currentNodeIndex = (currentNodeIndex + 1) % currentWay.nodeIds.length;
+                            } else {
+                                console.log("Next node is undefined for nodeId:", nextNodeId);
+                            }
                         }
                     }
                 }
             }
+
+
+
         }
 
         // Créer la voiture

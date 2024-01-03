@@ -8,9 +8,29 @@
 #include <QFile>
 #include <QDebug>
 
-QList<QObject*> readOsmFile(const QString &fileName) {
+struct Way {
+    quint64 id;
+    QVector<quint64> nodeIds;  // IDs des nœuds
+};
+bool isNodeIdPresent(const QMap<quint64, Node*>& nodes, quint64 nodeId) {
+
+    if (nodes.contains(nodeId)){
+        return true;
+    }
+
+    return false;
+}
+
+
+bool isNodeIdPresent(QVariantList node,  quint64 nodeId){
+    if (node.contains(nodeId)){
+        return true;
+    }
+     return false;
+}
+QMap<quint64, Node*> readAllOsmNodes(const QString &fileName) {
+    QMap<quint64, Node*> nodes;
     QFile file(fileName);
-    QList<QObject*> nodes;
 
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
         qDebug() << "Error: Cannot read file" << qPrintable(fileName)
@@ -19,15 +39,23 @@ QList<QObject*> readOsmFile(const QString &fileName) {
     }
 
     QXmlStreamReader xmlReader(&file);
+
     while (!xmlReader.atEnd() && !xmlReader.hasError()) {
-        QXmlStreamReader::TokenType token = xmlReader.readNext();
-        if (token == QXmlStreamReader::StartElement) {
-            if (xmlReader.name().toString() == "node") {
+        xmlReader.readNext();
+        if (xmlReader.isStartElement() && xmlReader.name().toString() == "node") {
+            bool ok;
+            quint64 nodeId = xmlReader.attributes().value("id").toULongLong(&ok);
+            double lat = xmlReader.attributes().value("lat").toDouble();
+            double lon = xmlReader.attributes().value("lon").toDouble();
+
+            if (ok) {
                 Node* node = new Node();
-                node->setId(xmlReader.attributes().value("uid").toLong());
-                node->setLat(xmlReader.attributes().value("lat").toDouble());
-                node->setLon(xmlReader.attributes().value("lon").toDouble());
-                nodes.append(node);
+                node->setId(nodeId);
+                node->setLat(lat);
+                node->setLon(lon);
+                nodes.insert(nodeId, node);
+            } else {
+                qDebug() << "Failed to read node ID";
             }
         }
     }
@@ -40,15 +68,88 @@ QList<QObject*> readOsmFile(const QString &fileName) {
     return nodes;
 }
 
+QVector<Way> readOsmWays(const QString &fileName) {
+    QFile file(fileName);
+    QVector<Way> ways;
+    QXmlStreamReader xmlReader(&file);
+
+    if (!file.open(QFile::ReadOnly | QFile::Text)) {
+        qDebug() << "Error: Cannot read file" << qPrintable(fileName)
+                 << ": " << qPrintable(file.errorString());
+        return ways;
+    }
+
+    while (!xmlReader.atEnd() && !xmlReader.hasError()) {
+        xmlReader.readNext();
+        if (xmlReader.isStartElement() && xmlReader.name().toString() == "way") {
+            Way way;
+            way.id = xmlReader.attributes().value("id").toLong();
+            while (!(xmlReader.tokenType() == QXmlStreamReader::EndElement && xmlReader.name().toString() == "way")) {
+                xmlReader.readNext();
+                if (xmlReader.tokenType() == QXmlStreamReader::StartElement && xmlReader.name().toString() == "nd") {
+                    bool ok;
+                    quint64 nodeId = xmlReader.attributes().value("ref").toULongLong(&ok);
+                    if (ok) {
+                        way.nodeIds.push_back(nodeId);
+                        //qDebug()<< "nodes for "<< way.id << "/*/ id "<<way.nodeIds;
+                    } else {
+                        qDebug() << "Failed to convert node ID for Way" << way.id;
+                    }
+                }
+            }
+
+            ways.push_back(way);
+
+        }
+    }
+
+
+    file.close();
+    return ways;
+}
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
     qRegisterMetaType<Node*>("Node*");
+    QString osmFilePath = "C:/Users/ihebc/OneDrive/Bureau/Reseaux2V2/DonneMap.osm";
 
-    QList<QObject*> nodes = readOsmFile("C:/Users/ihebc/OneDrive/Bureau/Reseaux2V2/DonneMap.osm");
-    ui->quickWidget->engine()->rootContext()->setContextProperty("nodeData", QVariant::fromValue(nodes));
+    // Lire les nœuds
+    QMap<quint64, Node*> nodes = readAllOsmNodes(osmFilePath);
 
+    // Convertir les nœuds pour QML
+    QVariantList nodeListForQml;
+    for (auto *node : nodes) {
+        QVariantMap nodeMap;
+        nodeMap.insert("id", QVariant::fromValue(node->id()));
+        nodeMap.insert("lat", QVariant::fromValue(node->lat()));
+        nodeMap.insert("lon", QVariant::fromValue(node->lon()));
+        nodeListForQml.append(nodeMap);
+    }
+
+    // Lire les chemins
+    QVector<Way> ways = readOsmWays(osmFilePath);
+
+    // Convertir les chemins pour QML
+    QVariantList wayListForQml;
+    for (const Way &way : ways) {
+        QVariantMap wayMap;
+        wayMap.insert("id", QVariant::fromValue(way.id));
+
+        QVariantList nodeIdList;
+        for (quint64 nodeId : way.nodeIds) {
+            nodeIdList.append(QVariant::fromValue(nodeId));
+        }
+        wayMap.insert("nodeIds", nodeIdList);
+
+        wayListForQml.append(wayMap);
+    }
+
+    // Passer les données à QML
+    ui->quickWidget->engine()->rootContext()->setContextProperty("nodeData", nodeListForQml);
+    ui->quickWidget->engine()->rootContext()->setContextProperty("waysData", wayListForQml);
+    qDebug()<<isNodeIdPresent(nodes,5887238122);
     ui->quickWidget->setSource(QUrl(QStringLiteral("qrc:/mapsLock.qml")));
     ui->quickWidget->show();
 }
