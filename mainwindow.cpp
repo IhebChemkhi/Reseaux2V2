@@ -111,9 +111,33 @@ QVector<Way> readOsmWays(const QString &fileName) {
     return ways;
 }
 
+void MainWindow::setNumberOfCars(int count) {
+    if (numberOfCars != count) {
+        numberOfCars = count;
+        emit numberOfCarsChanged(count);
+    }
+}
+
+void MainWindow::updateNumberOfCars() {
+    QString text = ui->VoitureEdit->toPlainText();
+    bool ok;
+    int numVoitures = text.toInt(&ok);
+    if (ok) {
+        setNumberOfCars(numVoitures);
+        qDebug() << "number of cars changed : " <<numVoitures;
+    } else {
+        qDebug() << "Invalid input for number of cars";
+    }
+}
+
+
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent), ui(new Ui::MainWindow) {
+    QMainWindow(parent),
+    ui(new Ui::MainWindow),
+    numberOfCars(1) {
     ui->setupUi(this);
+    connect(ui->updateButton, &QPushButton::clicked, this, &MainWindow::updateNumberOfCars);
+    connect(this, &MainWindow::numberOfCarsChanged, this, &MainWindow::testSlot);
 
     qRegisterMetaType<Node*>("Node*");
     QString osmFilePath = "C:/Users/ihebc/OneDrive/Bureau/Reseaux2V2/DonneMap.osm";
@@ -152,7 +176,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Passer les données à QML
     ui->quickWidget->engine()->rootContext()->setContextProperty("nodeData", nodeListForQml);
     ui->quickWidget->engine()->rootContext()->setContextProperty("waysData", wayListForQml);
-
+    ui->quickWidget->engine()->rootContext()->setContextProperty("mainWindow", this);
     ui->quickWidget->setSource(QUrl(QStringLiteral("qrc:/mapsLock.qml")));
     ui->quickWidget->show();
 }
@@ -162,4 +186,7 @@ MainWindow::~MainWindow() {
         delete node;
     }
     delete ui;
+}
+void MainWindow::testSlot(int numCars) {
+    qDebug() << "Test slot received signal with value:" << numCars;
 }

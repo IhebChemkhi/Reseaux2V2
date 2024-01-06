@@ -30,7 +30,8 @@ RESOURCES += \
 
 DISTFILES += \
     DonneMap.osm \
-    MapMarker.qml
+    MapMarker.qml \
+    map2.osm
 
 
 
