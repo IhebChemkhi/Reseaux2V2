@@ -15,11 +15,14 @@ Rectangle {
     property double minY: 9.0
     property double maxX: 70.0
     property double maxY: .0
+    property bool timerRunning: true
     property var node: nodeData
     property var ways: waysData
     property int numberOfCars: 15
     property int sideLength: 40
     property color hexagonColor: "green"
+    property real coverageRadius: 50
+    property var voitures: []
 
     Plugin {
         id: mapPlugin
@@ -35,10 +38,37 @@ Rectangle {
 
 
     }
+    function initVoitures() {
+        window.voitures = [];
+        for (var i = 0; i < mainWindow.numberOfCars; i++) {
+            window.voitures.push({lat: 0, lon: 0}); // Initialisez avec des valeurs par défaut
+            console.log("Voiture " + i + " initialisée : ", JSON.stringify(window.voitures[i]));
+
+        }
+        console.log("Total des voitures initialisées : ", window.voitures.length);
+    }
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        var R = 6371e3; // Rayon de la Terre en mètres
+        var radianLat1 = lat1 * Math.PI / 180; // Convertir en radians
+        var radianLat2 = lat2 * Math.PI / 180;
+        var deltaLat = (lat2-lat1) * Math.PI / 180;
+        var deltaLon = (lon2-lon1) * Math.PI / 180;
+
+        var a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
+                Math.cos(radianLat1) * Math.cos(radianLat2) *
+                Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
+        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        var distance = R * c; // Distance en mètres
+        return distance;
+    }
     function updateCarRepeater() {
         carRepeater.model = 0;
         carRepeater.model = mainWindow.numberOfCars;
     }
+    property var circles: [] // Array to hold MapCircle instances
+
+
 
 
     // Create a button to generate the hexagonal grid
@@ -86,6 +116,37 @@ Rectangle {
         id: itemsOverlayPlugin
         name: "itemsoverlay"
     }
+    Canvas {
+        id:lineCanvas
+        onPaint: {
+            var ctx = getContext("2d");
+            ctx.clearRect(0, 0, width, height);
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 2;
+
+            for (var i = 0; i < mainWindow.numberOfCars; i++) {
+                for (var j = i + 1; j < mainWindow.numberOfCars; j++) {
+                    var car1 = window.voitures[i];
+                    var car2 = window.voitures[j];
+
+                    var distance = calculateDistance(car1.lat, car1.lon, car2.lat, car2.lon);
+
+                    if (distance < window.coverageRadius * 2) {
+                        console.log("Dessin d'une ligne entre les voitures " + i + " et " + j);
+                        var car1Pos = map.fromCoordinate(QtPositioning.coordinate(car1.lat, car1.lon));
+                        var car2Pos = map.fromCoordinate(QtPositioning.coordinate(car2.lat, car2.lon));
+
+                        ctx.beginPath();
+                        ctx.moveTo(car1Pos.x, car1Pos.y);
+                        ctx.lineTo(car2Pos.x, car2Pos.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+    }
+
+
     Map {
         id: overlayMap
         anchors.fill: parent
@@ -93,12 +154,6 @@ Rectangle {
         center: map.center
         zoomLevel: map.zoomLevel
         color: "transparent"
-
-        Component.onCompleted: {
-            console.log("overlayMap is loaded");
-
-
-        }
 
         Component {
             id: hexagonComponent
@@ -143,7 +198,15 @@ Rectangle {
                 console.log("hexagonRepeater is loaded, count:", count);
             }
         }
-
+        Component {
+            id: circleComponent
+            MapCircle {
+                radius: 50
+                color: "transparent"
+                border.color: "green"
+                border.width: 1
+            }
+        }
 
         MapItemView {
             model: mainWindow.numberOfCars // Utilisez le nombre de voitures comme modèle
@@ -156,31 +219,63 @@ Rectangle {
                     return waysData[Math.floor(Math.random() * waysData.length)]
                 }
 
-                sourceItem: Rectangle {
+                sourceItem: Item {
                     width: 10
                     height: 10
-                    color: "blue"
-                    radius: width / 2
+
+                    Rectangle {
+                        width: 10
+                        height: 10
+                        color: "blue"
+                        radius: 5 // Half of width to create a circle
+                        anchors.centerIn: parent
+                        Component.onCompleted: {
+                            initVoitures();
+                            console.log(JSON.stringify(voitures));
+                        }
+                    }
+
+                    // Additional rectangle to represent the coverage radius
+                    Rectangle {
+                        width: coverageRadius * 2 // Adjust size accordingly
+                        height: coverageRadius * 2
+                        color: "green"
+                        opacity: 0.3
+                        radius: coverageRadius // Half of width/height to create a circle
+                        anchors.centerIn: parent
+                    }
+
                 }
 
                 Timer {
-                    interval: 2000
-                    running: currentWay.nodeIds.length > 0
+                    id:myTimer
+                    interval: mainWindow.temps
+                    running: window.timerRunning && currentWay.nodeIds.length > 0
                     repeat: true
                     onTriggered: {
                         if (currentNodeIndex < currentWay.nodeIds.length) {
                             var nodeId = currentWay.nodeIds[currentNodeIndex]
                             var node = nodeData.find(function(n) { return n.id === nodeId })
                             if (node) {
+
+                                if (window.voitures && currentNodeIndex < window.voitures.length) {
+                                    window.voitures[currentNodeIndex].lat = node.lat;
+                                    window.voitures[currentNodeIndex].lon = node.lon;
+                                    lineCanvas.requestPaint();
+                                }
+
                                 coordinate = QtPositioning.coordinate(node.lat, node.lon)
                                 currentNodeIndex++
+
                             }
                         } else {
                             currentWay = assignNewWay()
                             currentNodeIndex = 0
                         }
+
                     }
                 }
+
             }
         }
     }
@@ -189,6 +284,7 @@ Rectangle {
     Connections {
         target: mainWindow
         function onNumberOfCarsChanged() {
+
             console.log("Nombre de voitures mis à jour :", mainWindow.numberOfCars);
             // La mise à jour du nombre de voitures sera gérée automatiquement par le modèle
         }
@@ -217,6 +313,32 @@ Rectangle {
             map.zoomLevel -= 1
         }
     }
+    Button {
+        id:arreterTimer
+        text: "arreter Timer"
+        anchors.right: parent.right
+        anchors.rightMargin: 10
+        anchors.top: zoomOutButton.bottom // Place le bouton "Zoom Out" en dessous de "Zoom In"
+        anchors.topMargin: 10 // Marge supérieure pour espacer les boutons
+
+        onClicked: {
+
+            window.timerRunning = false;
+        }
+    }
+    Button {
+        text: "demarrer Timer"
+        anchors.right: parent.right
+        anchors.rightMargin: 10
+        anchors.top: arreterTimer.bottom // Place le bouton "Zoom Out" en dessous de "Zoom In"
+        anchors.topMargin: 10 // Marge supérieure pour espacer les boutons
+
+        onClicked: {
+
+            window.timerRunning = true;
+        }
+    }
+
 
 }
 

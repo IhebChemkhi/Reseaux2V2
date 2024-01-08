@@ -130,14 +130,36 @@ void MainWindow::updateNumberOfCars() {
     }
 }
 
+void MainWindow::updateTemps() {
+    QString text = ui->plainTextEditTemps->toPlainText();
+    bool ok;
+    int temps = text.toInt(&ok);
+    if (ok) {
+        setTemps(temps);
+        qDebug() << "vitesse changed : " <<temps;
+    } else {
+        qDebug() << "Invalid input temps";
+    }
+}
+void MainWindow::setTemps(int count) {
+    if (temps != count) {
+        temps = count;
+        emit tempsChanged(count);
+    }
+}
+
+
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    numberOfCars(1) {
+    numberOfCars(1),
+    temps(1000){
     ui->setupUi(this);
     connect(ui->updateButton, &QPushButton::clicked, this, &MainWindow::updateNumberOfCars);
-    connect(this, &MainWindow::numberOfCarsChanged, this, &MainWindow::testSlot);
+    connect(ui->pushButton,&QPushButton::clicked, this, &MainWindow::updateTemps);
+    connect(this, &MainWindow::tempsChanged, this, &MainWindow::testSlot);
 
     qRegisterMetaType<Node*>("Node*");
     QString osmFilePath = "C:/Users/ihebc/OneDrive/Bureau/Reseaux2V2/DonneMap.osm";
@@ -187,6 +209,6 @@ MainWindow::~MainWindow() {
     }
     delete ui;
 }
-void MainWindow::testSlot(int numCars) {
-    qDebug() << "Test slot received signal with value:" << numCars;
+void MainWindow::testSlot(int temps) {
+    qDebug() << "Test slot received signal with value:" << temps;
 }
